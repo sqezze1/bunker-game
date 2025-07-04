@@ -1,14 +1,49 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import { db } from "../firebase";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  onSnapshot,
+  arrayUnion,
+} from "firebase/firestore";
 
-function Lobby() {
+export default function Lobby() {
   const query = new URLSearchParams(useLocation().search);
   const name = query.get("name") || "Игрок";
   const room = query.get("room") || "ROOM";
 
-  // Пока что список игроков в памяти (будем подключать Firebase позже)
-const [players] = useState<string[]>([name]);
+  const [players, setPlayers] = useState<string[]>([]);
 
+  useEffect(() => {
+    const roomRef = doc(db, "rooms", room);
+
+    const joinRoom = async () => {
+      const roomSnap = await getDoc(roomRef);
+
+      if (!roomSnap.exists()) {
+        await setDoc(roomRef, {
+          players: [name],
+        });
+      } else {
+        await updateDoc(roomRef, {
+          players: arrayUnion(name),
+        });
+      }
+
+      // Подписка на обновления игроков
+      onSnapshot(roomRef, (docSnap) => {
+        const data = docSnap.data();
+        if (data?.players) {
+          setPlayers(data.players);
+        }
+      });
+    };
+
+    joinRoom();
+  }, [room, name]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
@@ -34,5 +69,3 @@ const [players] = useState<string[]>([name]);
     </div>
   );
 }
-
-export default Lobby;
