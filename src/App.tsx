@@ -7,8 +7,8 @@ function App() {
   const navigate = useNavigate();
 
   const handleJoin = () => {
-    if (name.trim() === "") return alert("Введите имя");
-    if (room.trim() === "") return alert("Введите код комнаты");
+    if (!name.trim()) return alert("Введите имя");
+    if (!room.trim()) return alert("Введите код комнаты");
     navigate(`/lobby?name=${encodeURIComponent(name)}&room=${encodeURIComponent(room)}`);
   };
 
@@ -18,29 +18,32 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-4">
-      <div className="bg-gray-800 p-6 rounded-xl shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">Добро пожаловать в Бункер 🔐</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 text-white px-4">
+      <div className="bg-gray-800/80 backdrop-blur-md p-8 rounded-2xl shadow-lg w-full max-w-md">
+        <h1 className="text-3xl font-extrabold text-center mb-6">
+          Добро пожаловать в <span className="text-yellow-400">Бункер</span> 🔐
+        </h1>
 
         <input
           type="text"
           placeholder="Ваше имя"
-          className="w-full p-2 rounded bg-gray-700 mb-3 text-white"
+          className="w-full p-3 mb-4 rounded-xl bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
-        <div className="flex gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-4">
           <input
             type="text"
             placeholder="Код комнаты"
-            className="w-full p-2 rounded bg-gray-700 text-white"
+            className="flex-1 p-3 rounded-xl bg-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             value={room}
             onChange={(e) => setRoom(e.target.value)}
           />
           <button
-            className="bg-blue-600 hover:bg-blue-700 px-3 rounded"
             onClick={handleCreateRoom}
+            title="Случайный код"
+            className="p-3 bg-yellow-500 hover:bg-yellow-600 rounded-xl text-black font-bold"
           >
             🎲
           </button>
@@ -48,7 +51,7 @@ function App() {
 
         <button
           onClick={handleJoin}
-          className="w-full bg-green-600 hover:bg-green-700 py-2 rounded mt-2"
+          className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl text-lg font-semibold transition duration-200"
         >
           Присоединиться
         </button>
