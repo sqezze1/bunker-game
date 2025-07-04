@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 function Lobby() {
   const query = new URLSearchParams(useLocation().search);
@@ -7,7 +7,8 @@ function Lobby() {
   const room = query.get("room") || "ROOM";
 
   // Пока что список игроков в памяти (будем подключать Firebase позже)
-  const [players, setPlayers] = useState<string[]>([name]);
+const [players] = useState<string[]>([name]);
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
