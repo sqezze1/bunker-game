@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, /*/ useNavigate /*/ } from "react-router-dom";
 import { db } from "../firebase";
 import {
   doc,
@@ -16,6 +16,8 @@ export default function Lobby() {
   const room = query.get("room") || "ROOM";
 
   const [players, setPlayers] = useState<string[]>([]);
+  const [host, setHost] = useState<string | null>(null);
+  // const navigate = useNavigate();
 
   useEffect(() => {
     const roomRef = doc(db, "rooms", room);
@@ -26,24 +28,29 @@ export default function Lobby() {
       if (!roomSnap.exists()) {
         await setDoc(roomRef, {
           players: [name],
+          host: name,
         });
+        setHost(name);
       } else {
+        const roomData = roomSnap.data();
+        setHost(roomData?.host || null);
+
         await updateDoc(roomRef, {
           players: arrayUnion(name),
         });
       }
 
-      // Подписка на обновления игроков
       onSnapshot(roomRef, (docSnap) => {
         const data = docSnap.data();
-        if (data?.players) {
-          setPlayers(data.players);
-        }
+        if (data?.players) setPlayers(data.players);
+        if (data?.host) setHost(data.host);
       });
     };
 
     joinRoom();
   }, [room, name]);
+
+  const isHost = host === name;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
@@ -54,17 +61,19 @@ export default function Lobby() {
         <ul className="bg-gray-700 rounded-lg p-4 space-y-2 mb-4">
           {players.map((player, idx) => (
             <li key={idx} className="bg-gray-600 rounded p-2">
-              {player}
+              {player} {player === host && "(👑 Хост)"}
             </li>
           ))}
         </ul>
 
-        <button
-          className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl text-lg font-semibold"
-          onClick={() => alert("Начать игру (пока заглушка)")}
-        >
-          🚀 Начать игру
-        </button>
+        {isHost && (
+          <button
+            className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl text-lg font-semibold"
+            onClick={() => alert("Следующий шаг — начать игру")}
+          >
+            🚀 Начать игру
+          </button>
+        )}
       </div>
     </div>
   );
