@@ -52,6 +52,8 @@ export default function PlayerCard() {
   const [currentTurn, setCurrentTurn] = useState<string | null>(null);
   const [revealedFields, setRevealedFields] = useState<Record<string, string[]>>({});
 
+  const [votes, setVotes] = useState<Record<string, string[]>>({});
+  const [expelled, setExpelled] = useState<string[]>([]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -64,6 +66,8 @@ export default function PlayerCard() {
       if (data?.scenario) setScenario(data.scenario);
       if (data?.currentTurn) setCurrentTurn(data.currentTurn);
       if (data?.revealedFields) setRevealedFields(data.revealedFields);
+      if (data?.votes) setVotes(data.votes);
+      if (data?.expelled) setExpelled(data.expelled);
     });
 
     const fetchPlayers = async () => {
@@ -114,10 +118,32 @@ export default function PlayerCard() {
   });
 };
 
+const handleVote = async (target: string) => {
+  if (!roomId || !playerName || target === playerName) return;
+
+  const currentVotes = votes[target] || [];
+  if (currentVotes.includes(playerName)) return;
+
+  const updatedVotes = [...currentVotes, playerName];
+
+  await updateDoc(doc(db, "rooms", roomId), {
+    [`votes.${target}`]: updatedVotes,
+  });
+
+  // Проверим, достаточно ли голосов для изгнания
+  const totalPlayers = Object.keys(players).length;
+  if (updatedVotes.length > totalPlayers / 2) {
+    const updatedExpelled = [...expelled, target];
+    await updateDoc(doc(db, "rooms", roomId), {
+      expelled: updatedExpelled,
+    });
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
       <div className="grid md:grid-cols-3 gap-6">
+        <h3 className="text-xl font-bold">🟢 Ход: {currentTurn}</h3>
         {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
@@ -127,28 +153,30 @@ export default function PlayerCard() {
             <p className="text-gray-400 italic">Ход игрока: {currentTurn}</p>
           )}
           <ul className="space-y-2 text-left">
-            {Object.entries(myCard).map(([key, value]) => {
-              const isRevealed = revealedFields[playerName]?.includes(key);
-              const canReveal = currentTurn === playerName && !isRevealed;
+          {Object.entries(myCard).map(([key, value]) => {
+            const isMyTurn = currentTurn === playerName;
+            const alreadyRevealed = revealedFields[playerName]?.includes(key);
+            const canReveal = isMyTurn && !alreadyRevealed;
 
-              return (
-                <li key={key}>
-                  <b>{labels[key as keyof Card]}:</b>{" "}
-                  {isRevealed ? (
-                    value
-                  ) : canReveal ? (
-                    <button
-                      className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-                      onClick={() => handleRevealField(key as keyof Card)}
-                    >
-                      Показать
-                    </button>
-                  ) : (
-                    <span className="text-gray-500 italic ml-2">Скрыто</span>
-                  )}
-                </li>
-              );
-            })}
+            return (
+              <li key={key}>
+                <b>{labels[key as keyof Card]}:</b>{" "}
+                {alreadyRevealed ? (
+                  value
+                ) : canReveal ? (
+                  <button
+                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                    onClick={() => handleRevealField(key as keyof Card)}
+                  >
+                    Показать
+                  </button>
+                ) : (
+                  // ⬇️ ты всё равно видишь значение, просто с пометкой "Скрыто"
+                  <span className="text-gray-400 ml-2">{value} <i className="italic">(Скрыто)</i></span>
+                )}
+              </li>
+            );
+          })}
           </ul>
         </div>
 
@@ -177,14 +205,32 @@ export default function PlayerCard() {
               name === playerName ? null : (
                 <li key={name} className="bg-gray-800 p-4 rounded-xl hover:bg-gray-700 transition">
                   <h3 className="font-bold text-lg">{name}</h3>
-                  {data.revealed && data.card ? (
-                    <ul className="mt-2 space-y-1 text-sm">
-                      {Object.entries(data.card).map(([key, value]) => (
-                        <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
-                      ))}
-                    </ul>
+
+                  {expelled.includes(name) ? (
+                    <p className="text-red-400 italic mt-2">Игрок изгнан</p>
                   ) : (
-                    <p className="italic text-gray-400 mt-1">Карточка скрыта</p>
+                    <>
+                      {data.card ? (
+                        <ul className="mt-2 space-y-1 text-sm">
+                          {Object.entries(data.card).map(([key, value]) => {
+                            const isRevealed = revealedFields[name]?.includes(key);
+                            return isRevealed ? (
+                              <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
+                            ) : null;
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="italic text-gray-400 mt-1">Карточка скрыта</p>
+                      )}
+
+                      <button
+                        onClick={() => handleVote(name)}
+                        disabled={votes[name]?.includes(playerName)}
+                        className="mt-3 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded disabled:opacity-50"
+                      >
+                        {votes[name]?.includes(playerName) ? "Вы уже голосовали" : "Проголосовать против"}
+                      </button>
+                    </>
                   )}
                 </li>
               )
