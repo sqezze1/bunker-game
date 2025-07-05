@@ -4,15 +4,12 @@ import { useParams } from "react-router-dom";
 import { db } from "../firebase";
 import {
   doc,
-  //getDoc,
   onSnapshot,
   collection,
   getDocs,
-  //updateDoc,
 } from "firebase/firestore";
 
 // Типы карточки и сценария
-
 type Card = {
   profession: string; age: string; health: string; phobia: string;
   skill: string; hobby: string; inventory: string; physique: string; fact: string;
@@ -57,7 +54,7 @@ export default function PlayerCard() {
     const roomRef = doc(db, "rooms", roomId);
     const playersRef = collection(db, "rooms", roomId, "players");
 
-    const unsub = onSnapshot(roomRef, (snap) => {
+    const unsubScenario = onSnapshot(roomRef, (snap) => {
       const data = snap.data();
       if (data?.scenario) setScenario(data.scenario);
     });
@@ -78,7 +75,7 @@ export default function PlayerCard() {
     const unsubPlayers = onSnapshot(playersRef, fetchPlayers);
 
     return () => {
-      unsub();
+      unsubScenario();
       unsubPlayers();
     };
   }, [roomId, playerName]);
@@ -90,56 +87,55 @@ export default function PlayerCard() {
   const { catastrophe, bunker } = scenario;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6 space-y-8">
-      {/* Катастрофа и бункер */}
-      <div className="bg-gray-900 p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold text-red-500">💥 {catastrophe.name}</h2>
-        <p className="italic text-gray-300 mb-4">{catastrophe.description}</p>
+    <div className="min-h-screen bg-gray-950 text-white p-4 flex items-center justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-7xl">
 
-        <h3 className="text-xl font-semibold mb-2">🏠 Условия в бункере:</h3>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-          <li>📐 <b>Размер:</b> {bunker.size}</li>
-          <li>👥 <b>Вместимость:</b> {bunker.capacity}</li>
-          <li>🥫 <b>Еда:</b> {bunker.food}</li>
-          <li>💧 <b>Вода:</b> {bunker.water}</li>
-          <li>⚡ <b>Электричество:</b> {bunker.electricity}</li>
-          <li>🏚️ <b>Состояние:</b> {bunker.condition}</li>
-          <li>🔒 <b>Безопасность:</b> {bunker.security}</li>
-          <li>📡 <b>Связь:</b> {bunker.communication}</li>
-        </ul>
-      </div>
+        {/* Моя карточка */}
+        <div className="bg-gray-900 p-4 rounded-xl shadow">
+          <h2 className="text-xl font-bold text-center mb-3">🧍 Моя карточка</h2>
+          <ul className="space-y-1 text-sm">
+            {Object.entries(myCard).map(([key, value]) => (
+              <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
+            ))}
+          </ul>
+        </div>
 
-      {/* Моя карточка */}
-      <div className="bg-gray-900 p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold mb-4 text-center">🧍 Моя карточка</h2>
-        <ul className="space-y-1">
-          {Object.entries(myCard).map(([key, value]) => (
-            <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
-          ))}
-        </ul>
-      </div>
+        {/* Сценарий */}
+        <div className="bg-gray-900 p-4 rounded-xl shadow">
+          <h2 className="text-xl font-bold text-red-500 text-center mb-2">💥 {catastrophe.name}</h2>
+          <p className="text-center text-gray-400 italic mb-4">{catastrophe.description}</p>
 
-      {/* Другие игроки */}
-      <div className="bg-gray-900 p-6 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold mb-4 text-center">👥 Игроки</h2>
-        <ul className="space-y-4">
-          {Object.entries(players).map(([name, data]) => (
-            name === playerName ? null : (
-              <li key={name} className="bg-gray-800 p-4 rounded-xl">
-                <h3 className="font-bold">{name}</h3>
-                {data.revealed && data.card ? (
-                  <ul className="text-sm mt-1 space-y-1">
-                    {Object.entries(data.card).map(([key, value]) => (
-                      <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="italic text-gray-400">Карточка скрыта</p>
-                )}
-              </li>
-            )
-          ))}
-        </ul>
+          <h3 className="text-lg font-semibold text-center mb-2">🏠 Бункер</h3>
+          <ul className="text-sm space-y-1">
+            {Object.entries(bunker).map(([k, v]) => (
+              <li key={k}><b>{k[0].toUpperCase() + k.slice(1)}:</b> {v}</li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Другие игроки */}
+        <div className="bg-gray-900 p-4 rounded-xl shadow">
+          <h2 className="text-xl font-bold text-center mb-3">👥 Игроки</h2>
+          <ul className="space-y-3 text-sm">
+            {Object.entries(players).map(([name, data]) => (
+              name === playerName ? null : (
+                <li key={name} className="bg-gray-800 p-2 rounded-lg">
+                  <b>{name}</b>
+                  {data.revealed && data.card ? (
+                    <ul className="mt-1 space-y-1">
+                      {Object.entries(data.card).map(([key, value]) => (
+                        <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="italic text-gray-500">Карточка скрыта</p>
+                  )}
+                </li>
+              )
+            ))}
+          </ul>
+        </div>
+
       </div>
     </div>
   );
