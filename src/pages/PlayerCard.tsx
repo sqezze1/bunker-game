@@ -6,6 +6,7 @@ import {
   doc,
   onSnapshot,
   collection,
+  updateDoc,
   getDocs,
 } from "firebase/firestore";
 
@@ -48,6 +49,10 @@ export default function PlayerCard() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [players, setPlayers] = useState<Record<string, Player>>({});
 
+  const [currentTurn, setCurrentTurn] = useState<string | null>(null);
+  const [revealedFields, setRevealedFields] = useState<Record<string, string[]>>({});
+
+
   useEffect(() => {
     if (!roomId) return;
 
@@ -57,6 +62,8 @@ export default function PlayerCard() {
     const unsubScenario = onSnapshot(roomRef, (snap) => {
       const data = snap.data();
       if (data?.scenario) setScenario(data.scenario);
+      if (data?.currentTurn) setCurrentTurn(data.currentTurn);
+      if (data?.revealedFields) setRevealedFields(data.revealedFields);
     });
 
     const fetchPlayers = async () => {
@@ -86,16 +93,62 @@ export default function PlayerCard() {
 
   const { catastrophe, bunker } = scenario;
 
+  const handleRevealField = async (field: keyof Card) => {
+  if (!roomId || !playerName || !myCard || currentTurn !== playerName) return;
+
+  const updated = [...(revealedFields[playerName] || []), field];
+
+  // Сохраняем открытое поле
+  await updateDoc(doc(db, "rooms", roomId), {
+    [`revealedFields.${playerName}`]: updated
+  });
+
+  // Переход хода к следующему игроку
+  const allNames = Object.keys(players);
+  const currentIndex = allNames.indexOf(playerName);
+  const nextIndex = (currentIndex + 1) % allNames.length;
+  const nextPlayer = allNames[nextIndex];
+
+  await updateDoc(doc(db, "rooms", roomId), {
+    currentTurn: nextPlayer
+  });
+};
+
+
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
       <div className="grid md:grid-cols-3 gap-6">
         {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
+          {currentTurn === playerName ? (
+            <p className="text-green-400 font-semibold">Ваш ход — откройте одно поле</p>
+          ) : (
+            <p className="text-gray-400 italic">Ход игрока: {currentTurn}</p>
+          )}
           <ul className="space-y-2 text-left">
-            {Object.entries(myCard).map(([key, value]) => (
-              <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
-            ))}
+            {Object.entries(myCard).map(([key, value]) => {
+              const isRevealed = revealedFields[playerName]?.includes(key);
+              const canReveal = currentTurn === playerName && !isRevealed;
+
+              return (
+                <li key={key}>
+                  <b>{labels[key as keyof Card]}:</b>{" "}
+                  {isRevealed ? (
+                    value
+                  ) : canReveal ? (
+                    <button
+                      className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                      onClick={() => handleRevealField(key as keyof Card)}
+                    >
+                      Показать
+                    </button>
+                  ) : (
+                    <span className="text-gray-500 italic ml-2">Скрыто</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 
