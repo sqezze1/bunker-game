@@ -91,25 +91,32 @@ export default function PlayerCard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-7xl">
 
         {/* Моя карточка */}
-        <div className="bg-gray-900 p-4 rounded-xl shadow">
-          <h2 className="text-xl font-bold text-center mb-3">🧍 Моя карточка</h2>
+        <div className="bg-gray-900 p-4 rounded-xl shadow flex flex-col items-center text-center">
+          <h2 className="text-xl font-bold mb-3">🧍 Моя карточка</h2>
           <ul className="space-y-1 text-sm">
             {Object.entries(myCard).map(([key, value]) => (
-              <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
+              <li key={key}>
+                <b>{labels[key as keyof Card]}:</b> {value}
+              </li>
             ))}
           </ul>
         </div>
 
-        {/* Сценарий */}
-        <div className="bg-gray-900 p-4 rounded-xl shadow">
-          <h2 className="text-xl font-bold text-red-500 text-center mb-2">💥 {catastrophe.name}</h2>
-          <p className="text-center text-gray-400 italic mb-4">{catastrophe.description}</p>
+        {/* Катастрофа и бункер */}
+        <div className="bg-gray-900 p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
+          <h2 className="text-2xl font-bold text-red-500 mb-2">💥 {catastrophe.name}</h2>
+          <p className="italic text-gray-300 mb-6 max-w-xl">{catastrophe.description}</p>
 
-          <h3 className="text-lg font-semibold text-center mb-2">🏠 Бункер</h3>
-          <ul className="text-sm space-y-1">
-            {Object.entries(bunker).map(([k, v]) => (
-              <li key={k}><b>{k[0].toUpperCase() + k.slice(1)}:</b> {v}</li>
-            ))}
+          <h3 className="text-xl font-semibold mb-4">🏠 Условия в бункере</h3>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm max-w-2xl w-full">
+            <li>📐 <b>Размер бункера:</b> {bunker.size}</li>
+            <li>👥 <b>Максимальная вместимость:</b> {bunker.capacity}</li>
+            <li>🥫 <b>Запас еды:</b> {bunker.food}</li>
+            <li>💧 <b>Запас воды:</b> {bunker.water}</li>
+            <li>⚡ <b>Наличие электричества:</b> {bunker.electricity}</li>
+            <li>🏚️ <b>Состояние сооружения:</b> {bunker.condition}</li>
+            <li>🔒 <b>Система безопасности:</b> {bunker.security}</li>
+            <li>📡 <b>Средства связи:</b> {bunker.communication}</li>
           </ul>
         </div>
 
