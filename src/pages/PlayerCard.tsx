@@ -180,20 +180,19 @@ export default function PlayerCard() {
               const canReveal = isMyTurn && !alreadyRevealed;
 
               return (
-                <li key={key}>
-                  <b>{labels[key as keyof Card]}:</b>{" "}
-                  {alreadyRevealed ? (
-                    value
-                  ) : canReveal ? (
-                  <button
-                    type="button"
-                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-                    onClick={() => handleRevealField(key as keyof Card)}
-                  >
-                    Показать
-                  </button>
-                  ) : (
-                    <span className="text-gray-400 ml-2">{value} <i className="italic">(Скрыто)</i></span>
+                <li key={key} className="flex justify-between items-center">
+                  <span>
+                    <b>{labels[key as keyof Card]}:</b> {value}
+                  </span>
+
+                  {canReveal && (
+                    <button
+                      type="button"
+                      className="ml-4 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                      onClick={() => handleRevealField(key as keyof Card)}
+                    >
+                      Показать
+                    </button>
                   )}
                 </li>
               );
