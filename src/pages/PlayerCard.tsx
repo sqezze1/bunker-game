@@ -87,28 +87,24 @@ export default function PlayerCard() {
   const { catastrophe, bunker } = scenario;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-4 flex items-center justify-center">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-7xl">
-
+    <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
+      <div className="grid md:grid-cols-3 gap-6">
         {/* Моя карточка */}
-        <div className="bg-gray-900 p-4 rounded-xl shadow flex flex-col items-center text-center">
-          <h2 className="text-xl font-bold mb-3">🧍 Моя карточка</h2>
-          <ul className="space-y-1 text-sm">
+        <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
+          <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
+          <ul className="space-y-2 text-left">
             {Object.entries(myCard).map(([key, value]) => (
-              <li key={key}>
-                <b>{labels[key as keyof Card]}:</b> {value}
-              </li>
+              <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
             ))}
           </ul>
         </div>
 
         {/* Катастрофа и бункер */}
-        <div className="bg-gray-900 p-6 rounded-xl shadow-lg flex flex-col items-center text-center">
-          <h2 className="text-2xl font-bold text-red-500 mb-2">💥 {catastrophe.name}</h2>
-          <p className="italic text-gray-300 mb-6 max-w-xl">{catastrophe.description}</p>
-
-          <h3 className="text-xl font-semibold mb-4">🏠 Условия в бункере</h3>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm max-w-2xl w-full">
+        <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
+          <h2 className="text-2xl font-bold text-red-500">💥 {catastrophe.name}</h2>
+          <p className="italic text-gray-300">{catastrophe.description}</p>
+          <h3 className="text-xl font-semibold mt-4">🏠 Условия в бункере</h3>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-left">
             <li>📐 <b>Размер бункера:</b> {bunker.size}</li>
             <li>👥 <b>Максимальная вместимость:</b> {bunker.capacity}</li>
             <li>🥫 <b>Запас еды:</b> {bunker.food}</li>
@@ -120,30 +116,30 @@ export default function PlayerCard() {
           </ul>
         </div>
 
-        {/* Другие игроки */}
-        <div className="bg-gray-900 p-4 rounded-xl shadow">
-          <h2 className="text-xl font-bold text-center mb-3">👥 Игроки</h2>
-          <ul className="space-y-3 text-sm">
+        {/* Игроки */}
+        <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
+          <h2 className="text-2xl font-bold">👥 Игроки</h2>
+          <ul className="space-y-4 text-left">
             {Object.entries(players).map(([name, data]) => (
               name === playerName ? null : (
-                <li key={name} className="bg-gray-800 p-2 rounded-lg">
-                  <b>{name}</b>
+                <li key={name} className="bg-gray-800 p-4 rounded-xl hover:bg-gray-700 transition">
+                  <h3 className="font-bold text-lg">{name}</h3>
                   {data.revealed && data.card ? (
-                    <ul className="mt-1 space-y-1">
+                    <ul className="mt-2 space-y-1 text-sm">
                       {Object.entries(data.card).map(([key, value]) => (
                         <li key={key}><b>{labels[key as keyof Card]}:</b> {value}</li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="italic text-gray-500">Карточка скрыта</p>
+                    <p className="italic text-gray-400 mt-1">Карточка скрыта</p>
                   )}
                 </li>
               )
             ))}
           </ul>
         </div>
-
       </div>
     </div>
   );
+
 }
