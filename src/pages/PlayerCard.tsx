@@ -180,10 +180,16 @@ export default function PlayerCard() {
               const canReveal = isMyTurn && !alreadyRevealed;
 
               return (
-                <li key={key} className="flex justify-between items-center">
-                  <span>
+                <li
+                  key={key}
+                  className="flex justify-between items-center border-b border-gray-800 py-2"
+                >
+                  <div>
                     <b>{labels[key as keyof Card]}:</b> {value}
-                  </span>
+                    <span className={`ml-2 text-sm ${alreadyRevealed ? "text-green-400" : "text-gray-400 italic"}`}>
+                      ({alreadyRevealed ? "Открыто" : "Скрыто"})
+                    </span>
+                  </div>
 
                   {canReveal && (
                     <button
