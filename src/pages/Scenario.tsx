@@ -47,8 +47,11 @@ export default function Scenario() {
 
     await updateDoc(roomRef, {
       showCards: true,
-      currentTurn: allNames[0], // первый игрок
-      revealedFields: {},       // очищаем состояния
+      currentTurn: allNames[0],
+      revealedFields: {},
+      votes: {},
+      expelled: [],
+      phase: "reveal", // 🔥 новое поле
     });
   };
 

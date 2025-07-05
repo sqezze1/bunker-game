@@ -53,8 +53,8 @@ export default function PlayerCard() {
   const [revealedFields, setRevealedFields] = useState<Record<string, string[]>>({});
   const [votes, setVotes] = useState<Record<string, string[]>>({});
   const [expelled, setExpelled] = useState<string[]>([]);
+  const [phase, setPhase] = useState<"reveal" | "vote">("reveal");
 
-  // 👇 useEffect должен быть безусловным (никаких return перед ним)
   useEffect(() => {
     if (!roomId) return;
 
@@ -68,6 +68,7 @@ export default function PlayerCard() {
       if (data?.revealedFields) setRevealedFields(data.revealedFields);
       if (data?.votes) setVotes(data.votes);
       if (data?.expelled) setExpelled(data.expelled);
+      if (data?.phase) setPhase(data.phase);
     });
 
     const fetchPlayers = async () => {
@@ -91,17 +92,19 @@ export default function PlayerCard() {
     };
   }, [roomId, playerName]);
 
-  // 🧹 Автоудаление комнаты при выходе
   useEffect(() => {
     const handleExit = async () => {
       if (!roomId || !playerName) return;
 
       try {
         await deleteDoc(doc(db, "rooms", roomId, "players", playerName));
-        const snapshot = await getDocs(collection(db, "rooms", roomId, "players"));
-        if (snapshot.empty) {
-          await deleteDoc(doc(db, "rooms", roomId));
-        }
+
+        setTimeout(async () => {
+          const snapshot = await getDocs(collection(db, "rooms", roomId, "players"));
+          if (snapshot.empty) {
+            await deleteDoc(doc(db, "rooms", roomId));
+          }
+        }, 1000);
       } catch (error) {
         console.error("Ошибка при выходе из комнаты:", error);
       }
@@ -116,24 +119,30 @@ export default function PlayerCard() {
   const handleRevealField = async (field: keyof Card) => {
     if (!roomId || !playerName || !myCard || currentTurn !== playerName) return;
 
-    try {
-      const updated = [...(revealedFields[playerName] || []), field];
+    const updated = [...(revealedFields[playerName] || []), field];
 
+    await updateDoc(doc(db, "rooms", roomId), {
+      [`revealedFields.${playerName}`]: updated,
+    });
+
+    const allNames = Object.keys(players);
+    const currentIndex = allNames.indexOf(playerName);
+    const nextIndex = (currentIndex + 1) % allNames.length;
+    const nextPlayer = allNames[nextIndex];
+
+    const everyoneRevealed = allNames.every(
+      (name) => (revealedFields[name]?.length || 0) + (name === playerName ? 1 : 0) >= 1
+    );
+
+    if (everyoneRevealed) {
       await updateDoc(doc(db, "rooms", roomId), {
-        [`revealedFields.${playerName}`]: updated,
+        phase: "vote",
+        currentTurn: allNames[0],
       });
-
-      const allNames = Object.keys(players);
-      const currentIndex = allNames.indexOf(playerName);
-      const nextIndex = (currentIndex + 1) % allNames.length;
-      const nextPlayer = allNames[nextIndex];
-
+    } else {
       await updateDoc(doc(db, "rooms", roomId), {
         currentTurn: nextPlayer,
       });
-    } catch (err) {
-      console.error("Ошибка при открытии поля:", err);
-      alert("Не удалось открыть поле. Попробуйте ещё раз.");
     }
   };
 
@@ -155,9 +164,17 @@ export default function PlayerCard() {
         expelled: updatedExpelled,
       });
     }
+
+    const allNames = Object.keys(players);
+    const currentIndex = allNames.indexOf(playerName);
+    const nextIndex = (currentIndex + 1) % allNames.length;
+    const nextPlayer = allNames[nextIndex];
+
+    await updateDoc(doc(db, "rooms", roomId), {
+      currentTurn: nextPlayer,
+    });
   };
 
-  // ⏳ Пока данные загружаются
   if (!myCard || !scenario) {
     return <div className="text-white text-center mt-10">Загрузка данных...</div>;
   }
@@ -167,7 +184,6 @@ export default function PlayerCard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
           <p className={`font-semibold ${currentTurn === playerName ? "text-green-400" : "text-gray-400 italic"}`}>
@@ -177,23 +193,18 @@ export default function PlayerCard() {
             {Object.entries(myCard).map(([key, value]) => {
               const isMyTurn = currentTurn === playerName;
               const alreadyRevealed = revealedFields[playerName]?.includes(key);
-              const canReveal = isMyTurn && !alreadyRevealed;
+              const canReveal = isMyTurn && !alreadyRevealed && phase === "reveal";
 
               return (
-                <li
-                  key={key}
-                  className="flex justify-between items-center border-b border-gray-800 py-2"
-                >
+                <li key={key} className="flex justify-between items-center border-b border-gray-800 py-2">
                   <div>
                     <b>{labels[key as keyof Card]}:</b> {value}
                     <span className={`ml-2 text-sm ${alreadyRevealed ? "text-green-400" : "text-gray-400 italic"}`}>
                       ({alreadyRevealed ? "Открыто" : "Скрыто"})
                     </span>
                   </div>
-
                   {canReveal && (
                     <button
-                      type="button"
                       className="ml-4 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
                       onClick={() => handleRevealField(key as keyof Card)}
                     >
@@ -206,7 +217,6 @@ export default function PlayerCard() {
           </ul>
         </div>
 
-        {/* Катастрофа и бункер */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-red-500">💥 {catastrophe.name}</h2>
           <p className="italic text-gray-300">{catastrophe.description}</p>
@@ -223,7 +233,6 @@ export default function PlayerCard() {
           </ul>
         </div>
 
-        {/* Игроки */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold">👥 Игроки</h2>
           <ul className="space-y-4 text-left">
@@ -248,13 +257,14 @@ export default function PlayerCard() {
                         <p className="italic text-gray-400 mt-1">Карточка скрыта</p>
                       )}
 
-                      <button
-                        onClick={() => handleVote(name)}
-                        disabled={votes[name]?.includes(playerName)}
-                        className="mt-3 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded disabled:opacity-50"
-                      >
-                        {votes[name]?.includes(playerName) ? "Вы уже голосовали" : "Проголосовать против"}
-                      </button>
+                      {phase === "vote" && currentTurn === playerName && !votes[name]?.includes(playerName) && (
+                        <button
+                          onClick={() => handleVote(name)}
+                          className="mt-3 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded"
+                        >
+                          Проголосовать против
+                        </button>
+                      )}
                     </>
                   )}
                 </li>
