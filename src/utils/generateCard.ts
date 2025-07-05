@@ -1,4 +1,3 @@
-// src/utils/generateCard.ts
 import {
   professions,
   ages,
