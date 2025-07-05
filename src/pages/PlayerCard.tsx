@@ -143,15 +143,13 @@ const handleVote = async (target: string) => {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
       <div className="grid md:grid-cols-3 gap-6">
-        <h3 className="text-xl font-bold">🟢 Ход: {currentTurn}</h3>
         {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
-          {currentTurn === playerName ? (
-            <p className="text-green-400 font-semibold">Ваш ход — откройте одно поле</p>
-          ) : (
-            <p className="text-gray-400 italic">Ход игрока: {currentTurn}</p>
-          )}
+          <h3 className="text-xl font-bold">🟢 Ход: {currentTurn}</h3>
+          <p className={`font-semibold ${currentTurn === playerName ? "text-green-400" : "text-gray-400 italic"}`}>
+            Ход игрока: {currentTurn === playerName ? `${currentTurn} (Вы)` : currentTurn}
+          </p>
           <ul className="space-y-2 text-left">
           {Object.entries(myCard).map(([key, value]) => {
             const isMyTurn = currentTurn === playerName;
