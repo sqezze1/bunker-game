@@ -45,6 +45,14 @@ export default function Lobby() {
         });
       }
 
+      localStorage.setItem("playerName", name);
+
+      await setDoc(
+        doc(db, "rooms", room, "players", name), // rooms/{room}/players/{имя}
+        {},                                      // пока пустой
+        { merge: true }                          // чтобы не стереть card позже
+      );
+
       onSnapshot(roomRef, (docSnap) => {
         const data = docSnap.data();
         if (data?.players) setPlayers(data.players);
@@ -67,23 +75,23 @@ export default function Lobby() {
     const players = playersSnapshot.docs;
 
     // 1. Генерируем карточки для каждого игрока
-    for (const docSnap of players) {
-      await updateDoc(doc(db, "rooms", room, "players", docSnap.id), {
-        card: generateCard()
-      });
+    for (const docSnap of playersSnapshot.docs) {
+      const playerName = docSnap.id; 
+      await setDoc(
+        doc(db, "rooms", room, "players", playerName),
+        { card: generateCard() },
+        { merge: true }
+      );
     }
 
-    // 2. Генерируем сценарий
     const scenario = generateScenario(players.length);
 
-    // 3. Сохраняем сценарий в Firestore и запускаем игру
     await updateDoc(doc(db, "rooms", room), {
       scenario,
       started: true,
     });
-
-    // Игра началась, остальные игроки будут перенаправлены на сцену через onSnapshot
   };
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
