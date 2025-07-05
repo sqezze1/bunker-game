@@ -18,10 +18,11 @@ export default function Lobby() {
   const query = new URLSearchParams(useLocation().search);
   const name = query.get("name") || "Игрок";
   const room = query.get("room") || "ROOM";
+  const navigate = useNavigate();
 
   const [players, setPlayers] = useState<string[]>([]);
   const [host, setHost] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [gameStarted, setGameStarted] = useState(false);  // Добавлен флаг для отслеживания начала игры
 
   useEffect(() => {
     const roomRef = doc(db, "rooms", room);
@@ -48,39 +49,41 @@ export default function Lobby() {
         const data = docSnap.data();
         if (data?.players) setPlayers(data.players);
         if (data?.host) setHost(data.host);
+        if (data?.started && !gameStarted) {
+          // Если игра началась, перенаправляем игроков
+          setGameStarted(true);  // Устанавливаем флаг о начале игры
+          navigate(`/scenario/${room}`);  // Перенаправление на сцену игры
+        }
       });
     };
 
     joinRoom();
-  }, [room, name]);
+  }, [room, name, gameStarted, navigate]);
 
   const isHost = host === name;
 
   const startGame = async () => {
-  const playersSnapshot = await getDocs(collection(db, "rooms", room, "players"));
-  const players = playersSnapshot.docs;
+    const playersSnapshot = await getDocs(collection(db, "rooms", room, "players"));
+    const players = playersSnapshot.docs;
 
-  // 1. Генерируем карточки
-  for (const docSnap of players) {
-  await updateDoc(doc(db, "rooms", room, "players", docSnap.id), {
-    card: generateCard()
-  });
-  }
+    // 1. Генерируем карточки для каждого игрока
+    for (const docSnap of players) {
+      await updateDoc(doc(db, "rooms", room, "players", docSnap.id), {
+        card: generateCard()
+      });
+    }
 
-  // 2. Генерируем сценарий
-  const scenario = generateScenario(players.length);
+    // 2. Генерируем сценарий
+    const scenario = generateScenario(players.length);
 
-  // 3. Сохраняем сценарий
-await updateDoc(doc(db, "rooms", room), {
-  scenario,
-  started: true,
-});
+    // 3. Сохраняем сценарий в Firestore и запускаем игру
+    await updateDoc(doc(db, "rooms", room), {
+      scenario,
+      started: true,
+    });
 
-  // 4. Переход к сценарию
-  navigate(`/scenario/${room}`);
-
-};
-
+    // Игра началась, остальные игроки будут перенаправлены на сцену через onSnapshot
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
@@ -97,12 +100,12 @@ await updateDoc(doc(db, "rooms", room), {
         </ul>
 
         {isHost && (
-        <button
-          onClick={startGame}
-          className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl text-white font-semibold"
-        >
-          Начать игру
-        </button>
+          <button
+            onClick={startGame}
+            className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl text-white font-semibold"
+          >
+            Начать игру
+          </button>
         )}
       </div>
     </div>
