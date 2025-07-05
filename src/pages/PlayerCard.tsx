@@ -3,6 +3,18 @@ import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+const fieldLabels: Record<string, string> = {
+  profession: "Профессия",
+  age: "Возраст",
+  health: "Здоровье",
+  phobia: "Фобия",
+  skill: "Навык",
+  hobby: "Хобби",
+  inventory: "Инвентарь",
+  physique: "Телосложение",
+  fact: "Факт",
+};
+
 type Card = {
   profession: string; age: string; health: string; phobia: string;
   skill: string; hobby: string; inventory: string; physique: string; fact: string;
@@ -31,9 +43,9 @@ export default function PlayerCard() {
       <div className="bg-gray-900 p-8 rounded-2xl shadow-lg w-full max-w-md space-y-4">
         <h2 className="text-2xl font-bold text-center mb-4">Ваша карточка</h2>
         <ul className="space-y-2">
-          {Object.entries(card).map(([k, v]) => (
-            <li key={k}>
-              <strong className="capitalize">{k}:</strong> {v}
+          {Object.entries(card).map(([key, value]) => (
+            <li key={key}>
+              <strong>{fieldLabels[key] || key}:</strong> {value}
             </li>
           ))}
         </ul>
