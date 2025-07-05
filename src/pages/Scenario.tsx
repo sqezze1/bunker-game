@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, /*/useLocation/*/ } from "react-router-dom";
-import { doc, /*/getDoc,/*/ onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
 type Scenario = {
@@ -40,7 +40,16 @@ export default function Scenario() {
 
   /* 2. Хост нажимает – выставляем showCards:true */
   const handleShowCards = async () => {
-    await updateDoc(doc(db, "rooms", roomId!), { showCards: true });
+    const roomRef = doc(db, "rooms", roomId!);
+    const playersRef = collection(db, "rooms", roomId!, "players");
+    const playerDocs = await getDocs(playersRef);
+    const allNames = playerDocs.docs.map(doc => doc.id);
+
+    await updateDoc(roomRef, {
+      showCards: true,
+      currentTurn: allNames[0], // первый игрок
+      revealedFields: {},       // очищаем состояния
+    });
   };
 
   if (!scenario) return (

@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { db } from "../firebase";
 import {
   doc,
+  deleteDoc,
   onSnapshot,
   collection,
   updateDoc,
@@ -48,13 +49,12 @@ export default function PlayerCard() {
   const [myCard, setMyCard] = useState<Card | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [players, setPlayers] = useState<Record<string, Player>>({});
-
   const [currentTurn, setCurrentTurn] = useState<string | null>(null);
   const [revealedFields, setRevealedFields] = useState<Record<string, string[]>>({});
-
   const [votes, setVotes] = useState<Record<string, string[]>>({});
   const [expelled, setExpelled] = useState<string[]>([]);
 
+  // 👇 useEffect должен быть безусловным (никаких return перед ним)
   useEffect(() => {
     if (!roomId) return;
 
@@ -91,54 +91,73 @@ export default function PlayerCard() {
     };
   }, [roomId, playerName]);
 
+  // 🧹 Автоудаление комнаты при выходе
+  useEffect(() => {
+    const handleExit = async () => {
+      if (!roomId || !playerName) return;
+
+      try {
+        await deleteDoc(doc(db, "rooms", roomId, "players", playerName));
+        const snapshot = await getDocs(collection(db, "rooms", roomId, "players"));
+        if (snapshot.empty) {
+          await deleteDoc(doc(db, "rooms", roomId));
+        }
+      } catch (error) {
+        console.error("Ошибка при выходе из комнаты:", error);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleExit);
+    return () => {
+      handleExit();
+      window.removeEventListener("beforeunload", handleExit);
+    };
+  }, [roomId, playerName]);
+
+  const handleRevealField = async (field: keyof Card) => {
+    if (!roomId || !playerName || !myCard || currentTurn !== playerName) return;
+
+    const updated = [...(revealedFields[playerName] || []), field];
+    await updateDoc(doc(db, "rooms", roomId), {
+      [`revealedFields.${playerName}`]: updated,
+    });
+
+    const allNames = Object.keys(players);
+    const currentIndex = allNames.indexOf(playerName);
+    const nextIndex = (currentIndex + 1) % allNames.length;
+    const nextPlayer = allNames[nextIndex];
+
+    await updateDoc(doc(db, "rooms", roomId), {
+      currentTurn: nextPlayer,
+    });
+  };
+
+  const handleVote = async (target: string) => {
+    if (!roomId || !playerName || target === playerName) return;
+
+    const currentVotes = votes[target] || [];
+    if (currentVotes.includes(playerName)) return;
+
+    const updatedVotes = [...currentVotes, playerName];
+    await updateDoc(doc(db, "rooms", roomId), {
+      [`votes.${target}`]: updatedVotes,
+    });
+
+    const totalPlayers = Object.keys(players).length;
+    if (updatedVotes.length > totalPlayers / 2) {
+      const updatedExpelled = [...expelled, target];
+      await updateDoc(doc(db, "rooms", roomId), {
+        expelled: updatedExpelled,
+      });
+    }
+  };
+
+  // ⏳ Пока данные загружаются
   if (!myCard || !scenario) {
     return <div className="text-white text-center mt-10">Загрузка данных...</div>;
   }
 
   const { catastrophe, bunker } = scenario;
-
-  const handleRevealField = async (field: keyof Card) => {
-  if (!roomId || !playerName || !myCard || currentTurn !== playerName) return;
-
-  const updated = [...(revealedFields[playerName] || []), field];
-
-  // Сохраняем открытое поле
-  await updateDoc(doc(db, "rooms", roomId), {
-    [`revealedFields.${playerName}`]: updated
-  });
-
-  // Переход хода к следующему игроку
-  const allNames = Object.keys(players);
-  const currentIndex = allNames.indexOf(playerName);
-  const nextIndex = (currentIndex + 1) % allNames.length;
-  const nextPlayer = allNames[nextIndex];
-
-  await updateDoc(doc(db, "rooms", roomId), {
-    currentTurn: nextPlayer
-  });
-};
-
-const handleVote = async (target: string) => {
-  if (!roomId || !playerName || target === playerName) return;
-
-  const currentVotes = votes[target] || [];
-  if (currentVotes.includes(playerName)) return;
-
-  const updatedVotes = [...currentVotes, playerName];
-
-  await updateDoc(doc(db, "rooms", roomId), {
-    [`votes.${target}`]: updatedVotes,
-  });
-
-  // Проверим, достаточно ли голосов для изгнания
-  const totalPlayers = Object.keys(players).length;
-  if (updatedVotes.length > totalPlayers / 2) {
-    const updatedExpelled = [...expelled, target];
-    await updateDoc(doc(db, "rooms", roomId), {
-      expelled: updatedExpelled,
-    });
-  }
-};
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
@@ -146,35 +165,33 @@ const handleVote = async (target: string) => {
         {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
-          <h3 className="text-xl font-bold">🟢 Ход: {currentTurn}</h3>
           <p className={`font-semibold ${currentTurn === playerName ? "text-green-400" : "text-gray-400 italic"}`}>
             Ход игрока: {currentTurn === playerName ? `${currentTurn} (Вы)` : currentTurn}
           </p>
           <ul className="space-y-2 text-left">
-          {Object.entries(myCard).map(([key, value]) => {
-            const isMyTurn = currentTurn === playerName;
-            const alreadyRevealed = revealedFields[playerName]?.includes(key);
-            const canReveal = isMyTurn && !alreadyRevealed;
+            {Object.entries(myCard).map(([key, value]) => {
+              const isMyTurn = currentTurn === playerName;
+              const alreadyRevealed = revealedFields[playerName]?.includes(key);
+              const canReveal = isMyTurn && !alreadyRevealed;
 
-            return (
-              <li key={key}>
-                <b>{labels[key as keyof Card]}:</b>{" "}
-                {alreadyRevealed ? (
-                  value
-                ) : canReveal ? (
-                  <button
-                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-                    onClick={() => handleRevealField(key as keyof Card)}
-                  >
-                    Показать
-                  </button>
-                ) : (
-                  // ⬇️ ты всё равно видишь значение, просто с пометкой "Скрыто"
-                  <span className="text-gray-400 ml-2">{value} <i className="italic">(Скрыто)</i></span>
-                )}
-              </li>
-            );
-          })}
+              return (
+                <li key={key}>
+                  <b>{labels[key as keyof Card]}:</b>{" "}
+                  {alreadyRevealed ? (
+                    value
+                  ) : canReveal ? (
+                    <button
+                      className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                      onClick={() => handleRevealField(key as keyof Card)}
+                    >
+                      Показать
+                    </button>
+                  ) : (
+                    <span className="text-gray-400 ml-2">{value} <i className="italic">(Скрыто)</i></span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -203,7 +220,6 @@ const handleVote = async (target: string) => {
               name === playerName ? null : (
                 <li key={name} className="bg-gray-800 p-4 rounded-xl hover:bg-gray-700 transition">
                   <h3 className="font-bold text-lg">{name}</h3>
-
                   {expelled.includes(name) ? (
                     <p className="text-red-400 italic mt-2">Игрок изгнан</p>
                   ) : (
@@ -238,5 +254,4 @@ const handleVote = async (target: string) => {
       </div>
     </div>
   );
-
 }
