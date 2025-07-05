@@ -54,6 +54,7 @@ export default function PlayerCard() {
   const [votes, setVotes] = useState<Record<string, string[]>>({});
   const [expelled, setExpelled] = useState<string[]>([]);
   const [phase, setPhase] = useState<"reveal" | "vote">("reveal");
+  const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -69,6 +70,7 @@ export default function PlayerCard() {
       if (data?.votes) setVotes(data.votes);
       if (data?.expelled) setExpelled(data.expelled);
       if (data?.phase) setPhase(data.phase);
+      if (data?.gameOver) setGameOver(data.gameOver);
     });
 
     const fetchPlayers = async () => {
@@ -147,7 +149,7 @@ export default function PlayerCard() {
   };
 
   const handleVote = async (target: string) => {
-    if (!roomId || !playerName || target === playerName) return;
+    if (!roomId || !playerName || target === playerName || gameOver) return;
 
     const currentVotes = votes[target] || [];
     if (currentVotes.includes(playerName)) return;
@@ -163,6 +165,14 @@ export default function PlayerCard() {
       await updateDoc(doc(db, "rooms", roomId), {
         expelled: updatedExpelled,
       });
+
+      const remaining = totalPlayers - updatedExpelled.length;
+      const bunkerCapacity = parseInt(scenario!.bunker.capacity);
+      if (remaining === bunkerCapacity) {
+        await updateDoc(doc(db, "rooms", roomId), {
+          gameOver: true,
+        });
+      }
     }
 
     const allNames = Object.keys(players);
@@ -183,7 +193,13 @@ export default function PlayerCard() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-10 space-y-10 text-lg">
+      {gameOver && (
+        <div className="text-center text-2xl text-yellow-400 font-bold p-6 bg-gray-800 rounded-xl">
+          🏁 Игра окончена! Победители определены.
+        </div>
+      )}
       <div className="grid md:grid-cols-3 gap-6">
+        {/* Моя карточка */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-green-400">🧍 Моя карточка</h2>
           <p className={`font-semibold ${currentTurn === playerName ? "text-green-400" : "text-gray-400 italic"}`}>
@@ -217,6 +233,7 @@ export default function PlayerCard() {
           </ul>
         </div>
 
+        {/* Катастрофа и бункер */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold text-red-500">💥 {catastrophe.name}</h2>
           <p className="italic text-gray-300">{catastrophe.description}</p>
@@ -233,6 +250,7 @@ export default function PlayerCard() {
           </ul>
         </div>
 
+        {/* Игроки */}
         <div className="bg-gray-900 p-8 rounded-2xl shadow-lg text-center space-y-4">
           <h2 className="text-2xl font-bold">👥 Игроки</h2>
           <ul className="space-y-4 text-left">
