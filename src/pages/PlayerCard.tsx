@@ -109,7 +109,6 @@ export default function PlayerCard() {
 
     window.addEventListener("beforeunload", handleExit);
     return () => {
-      handleExit();
       window.removeEventListener("beforeunload", handleExit);
     };
   }, [roomId, playerName]);
@@ -117,19 +116,25 @@ export default function PlayerCard() {
   const handleRevealField = async (field: keyof Card) => {
     if (!roomId || !playerName || !myCard || currentTurn !== playerName) return;
 
-    const updated = [...(revealedFields[playerName] || []), field];
-    await updateDoc(doc(db, "rooms", roomId), {
-      [`revealedFields.${playerName}`]: updated,
-    });
+    try {
+      const updated = [...(revealedFields[playerName] || []), field];
 
-    const allNames = Object.keys(players);
-    const currentIndex = allNames.indexOf(playerName);
-    const nextIndex = (currentIndex + 1) % allNames.length;
-    const nextPlayer = allNames[nextIndex];
+      await updateDoc(doc(db, "rooms", roomId), {
+        [`revealedFields.${playerName}`]: updated,
+      });
 
-    await updateDoc(doc(db, "rooms", roomId), {
-      currentTurn: nextPlayer,
-    });
+      const allNames = Object.keys(players);
+      const currentIndex = allNames.indexOf(playerName);
+      const nextIndex = (currentIndex + 1) % allNames.length;
+      const nextPlayer = allNames[nextIndex];
+
+      await updateDoc(doc(db, "rooms", roomId), {
+        currentTurn: nextPlayer,
+      });
+    } catch (err) {
+      console.error("Ошибка при открытии поля:", err);
+      alert("Не удалось открыть поле. Попробуйте ещё раз.");
+    }
   };
 
   const handleVote = async (target: string) => {
@@ -180,12 +185,13 @@ export default function PlayerCard() {
                   {alreadyRevealed ? (
                     value
                   ) : canReveal ? (
-                    <button
-                      className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
-                      onClick={() => handleRevealField(key as keyof Card)}
-                    >
-                      Показать
-                    </button>
+                  <button
+                    type="button"
+                    className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded"
+                    onClick={() => handleRevealField(key as keyof Card)}
+                  >
+                    Показать
+                  </button>
                   ) : (
                     <span className="text-gray-400 ml-2">{value} <i className="italic">(Скрыто)</i></span>
                   )}
