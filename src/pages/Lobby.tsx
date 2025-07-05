@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { useLocation, /*/ useNavigate /*/ } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { generateCard } from "../utils/generateCard";
+import { generateScenario } from "../utils/generateScenario";
 import { db } from "../firebase";
 import {
   doc,
@@ -8,6 +10,8 @@ import {
   updateDoc,
   onSnapshot,
   arrayUnion,
+  getDocs,
+  collection
 } from "firebase/firestore";
 
 export default function Lobby() {
@@ -17,7 +21,7 @@ export default function Lobby() {
 
   const [players, setPlayers] = useState<string[]>([]);
   const [host, setHost] = useState<string | null>(null);
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const roomRef = doc(db, "rooms", room);
@@ -52,6 +56,32 @@ export default function Lobby() {
 
   const isHost = host === name;
 
+  const startGame = async () => {
+  const playersSnapshot = await getDocs(collection(db, "rooms", room, "players"));
+  const players = playersSnapshot.docs;
+
+  // 1. Генерируем карточки
+  for (const docSnap of players) {
+  await updateDoc(doc(db, "rooms", room, "players", docSnap.id), {
+    card: generateCard()
+  });
+  }
+
+  // 2. Генерируем сценарий
+  const scenario = generateScenario(players.length);
+
+  // 3. Сохраняем сценарий
+await updateDoc(doc(db, "rooms", room), {
+  scenario,
+  started: true,
+});
+
+  // 4. Переход к сценарию
+  navigate(`/scenario/${room}`);
+
+};
+
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center px-4">
       <div className="bg-gray-800 p-6 rounded-xl w-full max-w-lg shadow-lg">
@@ -67,12 +97,12 @@ export default function Lobby() {
         </ul>
 
         {isHost && (
-          <button
-            className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl text-lg font-semibold"
-            onClick={() => alert("Следующий шаг — начать игру")}
-          >
-            🚀 Начать игру
-          </button>
+        <button
+          onClick={startGame}
+          className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl text-white font-semibold"
+        >
+          Начать игру
+        </button>
         )}
       </div>
     </div>
