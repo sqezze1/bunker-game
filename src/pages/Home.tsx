@@ -9,6 +9,9 @@ function Home() {
   const handleJoin = () => {
     if (!name.trim()) return alert("Введите имя");
     if (!room.trim()) return alert("Введите код комнаты");
+
+    localStorage.setItem("playerName", name);
+
     navigate(`/lobby?name=${encodeURIComponent(name)}&room=${encodeURIComponent(room)}`);
   };
 
