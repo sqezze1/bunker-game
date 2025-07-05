@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 
 type Scenario = {
@@ -24,18 +24,43 @@ export default function Scenario() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  const [host, setHost] = useState<string | null>(null);
+  const [name, setName] = useState<string>("");
 
+  // Получаем имя из URL
   useEffect(() => {
-    async function fetchScenario() {
-      const ref = doc(db, "rooms", roomId!);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setScenario(snap.data().scenario);
-      }
-    }
+    const queryName = new URLSearchParams(window.location.search).get("name");
+    if (queryName) setName(queryName);
+  }, []);
 
-    fetchScenario();
-  }, [roomId]);
+  // Подписка на обновления комнаты
+  useEffect(() => {
+    if (!roomId) return;
+    const ref = doc(db, "rooms", roomId);
+
+    const unsub = onSnapshot(ref, (snap) => {
+      const data = snap.data();
+      if (!data) return;
+
+      setHost(data.host);
+      if (data.scenario) setScenario(data.scenario);
+      if (data.showCards) {
+        navigate(`/game/${roomId}?name=${encodeURIComponent(name)}`);
+      }
+    });
+
+    return () => unsub();
+  }, [roomId, name, navigate]);
+
+  const isHost = host === name;
+
+  const handleShowCards = async () => {
+    if (!roomId) return;
+    const ref = doc(db, "rooms", roomId);
+    await updateDoc(ref, {
+      showCards: true,
+    });
+  };
 
   if (!scenario) {
     return (
@@ -61,7 +86,7 @@ export default function Scenario() {
         {/* Бункер */}
         <div>
           <h2 className="text-2xl font-semibold text-center mb-4">
-            🛖 Условия в бункере
+            🏠 Условия в бункере
           </h2>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base">
             <li>📐 <strong>Размер:</strong> {bunker.size}</li>
@@ -75,15 +100,17 @@ export default function Scenario() {
           </ul>
         </div>
 
-        {/* Кнопка продолжения */}
-        <div className="text-center">
-          <button
-            onClick={() => navigate(`/game/${roomId}`)}
-            className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl mt-4 text-white font-semibold"
-          >
-            Перейти к карточкам игроков
-          </button>
-        </div>
+        {/* Кнопка только для хоста */}
+        {isHost && (
+          <div className="text-center">
+            <button
+              onClick={handleShowCards}
+              className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl mt-4 text-white font-semibold"
+            >
+              Перейти к карточкам игроков
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
