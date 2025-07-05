@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { useParams, useNavigate, /*/useLocation/*/ } from "react-router-dom";
+import { doc, /*/getDoc,/*/ onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 type Scenario = {
